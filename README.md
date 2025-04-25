@@ -14,6 +14,52 @@ An automatic message sending system that processes and sends messages from a dat
 
 - Go 1.21 or higher
 - PostgreSQL
+- Docker and Docker Compose
+
+## Docker Setup
+
+The application uses Docker Compose to run all required services:
+
+### Services
+- `app`: The main application server
+- `postgres`: PostgreSQL database
+- `redis`: Redis cache server
+- `webhook`: Webhook testing service
+
+### Environment Setup
+1. Create a `.env` file in the project root (see `.env.example` for reference)
+2. Configure the following environment variables:
+   - Database settings
+   - Redis settings
+   - Webhook settings
+   - Server settings
+
+### Running with Docker
+```bash
+# Build and start all services
+docker-compose up --build
+
+# Start services in detached mode
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+
+# Rebuild and restart a specific service
+docker-compose up -d --build app
+```
+
+### Docker Compose Configuration
+The `docker-compose.yml` file defines:
+- Service configurations
+- Network setup
+- Volume mappings
+- Environment variables
+- Health checks
+- Dependencies between services
 
 ## Project Structure
 

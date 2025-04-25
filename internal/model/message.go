@@ -1,21 +1,39 @@
 package model
 
-import "time"
+import (
+	"time"
 
-const (
-	StatusPending = "pending"
-	StatusSent    = "sent"
-	StatusFailed  = "failed"
+	"gorm.io/gorm"
 )
 
+// Message status constants
+const (
+	MessageStatusPending   = "pending"
+	MessageStatusSent      = "sent"
+	MessageStatusFailed    = "failed"
+	MessageStatusCancelled = "cancelled"
+)
+
+// Message represents a message in the system
 type Message struct {
-	ID            uint       `json:"id" gorm:"primaryKey"`
-	Content       string     `json:"content" gorm:"size:500"`
-	To            string     `json:"to"`
-	Status        string     `json:"status" gorm:"default:'pending'"`
-	MessageID     string     `json:"message_id"`
-	ScheduledTime time.Time  `json:"scheduled_time"`
-	SentAt        *time.Time `json:"sent_at"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID          uint      `gorm:"primarykey" json:"id"`
+	Content     string    `json:"content"`
+	To          string    `json:"to"`
+	Status      string    `json:"status"`
+	MessageID   string    `json:"message_id"`
+	SentAt      time.Time `json:"sent_at"`
+	ScheduledAt time.Time `json:"scheduled_at"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+func (m *Message) BeforeCreate(tx *gorm.DB) error {
+	m.CreatedAt = time.Now()
+	m.UpdatedAt = time.Now()
+	return nil
+}
+
+func (m *Message) BeforeUpdate(tx *gorm.DB) error {
+	m.UpdatedAt = time.Now()
+	return nil
 }

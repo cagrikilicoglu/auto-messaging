@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 	"time"
 
 	"auto-messaging/internal/controller"
@@ -29,74 +28,22 @@ type CreateMessageRequest struct {
 
 // CreateMessage handles the creation of a new message
 func (h *MessageHandler) CreateMessage(c *gin.Context) {
-	var req CreateMessageRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
-		return
-	}
-
-	msg, err := h.controller.CreateMessage(req.Content, req.To, req.ScheduledTime)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create message"})
-		return
-	}
-
-	c.JSON(http.StatusCreated, msg)
+	h.controller.CreateMessage(c)
 }
 
 // GetMessages handles retrieving all messages
 func (h *MessageHandler) GetMessages(c *gin.Context) {
-	msgs, err := h.controller.GetMessages()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch messages"})
-		return
-	}
-
-	c.JSON(http.StatusOK, msgs)
+	h.controller.GetMessages(c)
 }
 
 // GetMessageByID handles retrieving a message by its ID
 func (h *MessageHandler) GetMessageByID(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid message ID"})
-		return
-	}
-
-	msg, err := h.controller.GetMessageByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Message not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, msg)
+	h.controller.GetMessage(c)
 }
 
 // UpdateMessageStatus handles updating the status of a message
 func (h *MessageHandler) UpdateMessageStatus(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid message ID"})
-		return
-	}
-
-	var req struct {
-		Status string `json:"status" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status format"})
-		return
-	}
-
-	if err := h.controller.UpdateMessageStatus(uint(id), req.Status); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update status"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Status updated"})
+	h.controller.UpdateMessage(c)
 }
 
 // @Summary Start automatic message sending
@@ -107,11 +54,7 @@ func (h *MessageHandler) UpdateMessageStatus(c *gin.Context) {
 // @Success 200 {object} map[string]string
 // @Router /api/v1/messaging/start [post]
 func (h *MessageHandler) StartMessaging(c *gin.Context) {
-	if err := h.controller.Start(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start messaging"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "Messaging started"})
+	h.controller.StartMessaging(c)
 }
 
 // @Summary Stop automatic message sending
@@ -122,11 +65,7 @@ func (h *MessageHandler) StartMessaging(c *gin.Context) {
 // @Success 200 {object} map[string]string
 // @Router /api/v1/messaging/stop [post]
 func (h *MessageHandler) StopMessaging(c *gin.Context) {
-	if err := h.controller.Stop(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to stop messaging"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "Messaging stopped"})
+	h.controller.StopMessaging(c)
 }
 
 // @Summary Get sent messages

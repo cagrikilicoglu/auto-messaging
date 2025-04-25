@@ -1,19 +1,19 @@
-DB:
+database:
   host: localhost
   port: 5432
   user: postgres
   password: Gopher822
   name: auto_messaging
 
-Redis:
+redis:
   host: localhost
   port: 6379
   password: ""
   db: 0
 
-Server:
+server:
   port: 8080
 
-Webhook:
-  url: "https://webhook.site/a742c828-5a85-4499-8dae-7fc068ef1ecd"
-  auth_key: "INS.me1x9uMcyYGlhKKQVPoc.bO3j9aZwRTOcA2Ywo" 
+webhook:
+  url: https://webhook.site/a742c828-5a85-4499-8dae-7fc068ef1ecd
+  auth_key: INS.me1x9uMcyYGlhKKQVPoc.bO3j9aZwRTOcA2Ywo 

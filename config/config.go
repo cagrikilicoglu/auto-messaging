@@ -38,10 +38,10 @@ type WebhookConfig struct {
 
 // Config holds all configuration settings
 type Config struct {
-	DB      DBConfig
-	Server  ServerConfig
-	Webhook WebhookConfig
-	Redis   RedisConfig
+	Database DBConfig
+	Redis    RedisConfig
+	Server   ServerConfig
+	Webhook  WebhookConfig
 }
 
 func Load() (*Config, error) {
@@ -54,30 +54,30 @@ func Load() (*Config, error) {
 	viper.SetEnvPrefix("")
 	viper.AutomaticEnv()
 
-	// Bind environment variables
-	viper.BindEnv("DB.Host", "DB_HOST")
-	viper.BindEnv("DB.Port", "DB_PORT")
-	viper.BindEnv("DB.User", "DB_USER")
-	viper.BindEnv("DB.Password", "DB_PASSWORD")
-	viper.BindEnv("DB.DBName", "DB_NAME")
+	// Bind environment variables with proper structure
+	viper.BindEnv("Database.Host", "DB_HOST")
+	viper.BindEnv("Database.Port", "DB_PORT")
+	viper.BindEnv("Database.User", "DB_USER")
+	viper.BindEnv("Database.Password", "DB_PASSWORD")
+	viper.BindEnv("Database.DBName", "DB_NAME")
 
 	viper.BindEnv("Redis.Host", "REDIS_HOST")
 	viper.BindEnv("Redis.Port", "REDIS_PORT")
 	viper.BindEnv("Redis.Password", "REDIS_PASSWORD")
 	viper.BindEnv("Redis.DB", "REDIS_DB")
 
-	viper.BindEnv("Server.Port", "API_PORT")
+	viper.BindEnv("Server.Port", "SERVER_PORT")
 	viper.BindEnv("Webhook.URL", "WEBHOOK_URL")
 	viper.BindEnv("Webhook.AuthKey", "WEBHOOK_AUTH_KEY")
 
 	// Set defaults
-	viper.SetDefault("DB.Host", "localhost")
-	viper.SetDefault("DB.Port", 5432)
-	viper.SetDefault("DB.User", "postgres")
-	viper.SetDefault("DB.Password", "postgres")
-	viper.SetDefault("DB.DBName", "auto_messaging")
+	viper.SetDefault("Database.Host", "postgres")
+	viper.SetDefault("Database.Port", 5432)
+	viper.SetDefault("Database.User", "postgres")
+	viper.SetDefault("Database.Password", "Gopher822")
+	viper.SetDefault("Database.DBName", "auto_messaging")
 
-	viper.SetDefault("Redis.Host", "localhost")
+	viper.SetDefault("Redis.Host", "redis")
 	viper.SetDefault("Redis.Port", 6379)
 	viper.SetDefault("Redis.Password", "")
 	viper.SetDefault("Redis.DB", 0)
