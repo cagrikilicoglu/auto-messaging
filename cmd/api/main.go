@@ -2,6 +2,7 @@ package main
 
 import (
 	"auto-messaging/config"
+	"auto-messaging/internal/client"
 	"auto-messaging/internal/controller"
 	"auto-messaging/internal/handler"
 	"auto-messaging/internal/repository"
@@ -33,8 +34,11 @@ func main() {
 	// Initialize repository
 	messageRepo := repository.NewMessageRepository(db)
 
+	// Initialize webhook client
+	webhookClient := client.NewWebhookClient(cfg.Webhook.URL, cfg.Webhook.AuthKey)
+
 	// Initialize controller
-	messageController := controller.NewMessageController(messageRepo)
+	messageController := controller.NewMessageController(messageRepo, webhookClient)
 
 	// Initialize handlers
 	messageHandler := handler.NewMessageHandler(messageController)

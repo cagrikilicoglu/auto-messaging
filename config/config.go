@@ -18,6 +18,10 @@ type Config struct {
 	Server struct {
 		Port int
 	}
+	Webhook struct {
+		URL     string
+		AuthKey string
+	}
 }
 
 func Load() (*Config, error) {
@@ -36,6 +40,10 @@ func Load() (*Config, error) {
 
 	// Server configuration
 	cfg.Server.Port = getEnvAsInt("API_PORT", 8080)
+
+	// Webhook configuration
+	cfg.Webhook.URL = getEnv("WEBHOOK_URL", "")
+	cfg.Webhook.AuthKey = getEnv("WEBHOOK_AUTH_KEY", "")
 
 	return cfg, nil
 }

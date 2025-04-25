@@ -23,6 +23,7 @@ func NewMessageHandler(controller *controller.MessageController) *MessageHandler
 // CreateMessageRequest represents the request body for creating a message
 type CreateMessageRequest struct {
 	Content       string    `json:"content" binding:"required"`
+	To            string    `json:"to" binding:"required"`
 	ScheduledTime time.Time `json:"scheduled_time" binding:"required"`
 }
 
@@ -34,7 +35,7 @@ func (h *MessageHandler) CreateMessage(c *gin.Context) {
 		return
 	}
 
-	msg, err := h.controller.CreateMessage(req.Content, req.ScheduledTime)
+	msg, err := h.controller.CreateMessage(req.Content, req.To, req.ScheduledTime)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create message"})
 		return

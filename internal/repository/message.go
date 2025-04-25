@@ -54,7 +54,7 @@ func (r *messageRepository) UpdateStatus(id uint, status string) error {
 
 func (r *messageRepository) FindPendingBefore(time time.Time) ([]model.Message, error) {
 	var messages []model.Message
-	if err := r.db.Where("status = ? AND scheduled_time <= ?", "pending", time).Find(&messages).Error; err != nil {
+	if err := r.db.Where("status = ? AND scheduled_time <= ?", "pending", time).Order("scheduled_time asc").Find(&messages).Error; err != nil {
 		return nil, err
 	}
 	return messages, nil
