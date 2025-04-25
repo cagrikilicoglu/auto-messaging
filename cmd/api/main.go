@@ -2,9 +2,10 @@ package main
 
 import (
 	"auto-messaging/config"
+	"auto-messaging/internal/controller"
 	"auto-messaging/internal/handler"
+	"auto-messaging/internal/repository"
 	"auto-messaging/internal/router"
-	"auto-messaging/internal/service"
 	"auto-messaging/pkg/database"
 	"log"
 	"strconv"
@@ -17,7 +18,7 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Initialize database connection
+	// Initialize database
 	db, err := database.NewPostgresDB(
 		cfg.DB.Host,
 		cfg.DB.Port,
@@ -29,11 +30,14 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// Initialize services
-	messageService := service.NewMessageService(db)
+	// Initialize repository
+	messageRepo := repository.NewMessageRepository(db)
+
+	// Initialize controller
+	messageController := controller.NewMessageController(messageRepo)
 
 	// Initialize handlers
-	messageHandler := handler.NewMessageHandler(messageService)
+	messageHandler := handler.NewMessageHandler(messageController)
 
 	// Setup router
 	r := router.SetupRouter(messageHandler)
