@@ -15,16 +15,21 @@ const (
 	contentType   = "application/json"
 )
 
-// WebhookClient handles communication with webhook service
-type WebhookClient struct {
+// WebhookClient defines the interface for webhook operations
+type WebhookClient interface {
+	SendMessage(req *model.WebhookRequest) (*model.WebhookResponse, error)
+}
+
+// webhookClient implements WebhookClient interface
+type webhookClient struct {
 	url     string
 	authKey string
 	client  *http.Client
 }
 
 // NewWebhookClient creates a new webhook client
-func NewWebhookClient(url, authKey string) *WebhookClient {
-	return &WebhookClient{
+func NewWebhookClient(url, authKey string) WebhookClient {
+	return &webhookClient{
 		url:     url,
 		authKey: authKey,
 		client:  &http.Client{},
@@ -32,7 +37,7 @@ func NewWebhookClient(url, authKey string) *WebhookClient {
 }
 
 // SendMessage sends a message to the webhook
-func (c *WebhookClient) SendMessage(req *model.WebhookRequest) (*model.WebhookResponse, error) {
+func (c *webhookClient) SendMessage(req *model.WebhookRequest) (*model.WebhookResponse, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err

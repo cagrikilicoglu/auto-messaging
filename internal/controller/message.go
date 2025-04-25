@@ -1,13 +1,16 @@
 package controller
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
 	"auto-messaging/internal/client"
 	"auto-messaging/internal/model"
 	"auto-messaging/internal/repository"
+	"auto-messaging/pkg/cache"
 )
 
 var (
@@ -23,16 +26,20 @@ const (
 // MessageController handles message operations
 type MessageController struct {
 	repo    repository.MessageRepository
-	webhook *client.WebhookClient
+	webhook client.WebhookClient
+	cache   cache.MessageCache
 	stopCh  chan struct{}
+	logger  *log.Logger
 }
 
 // NewMessageController creates a new message controller instance
-func NewMessageController(repo repository.MessageRepository, webhook *client.WebhookClient) *MessageController {
+func NewMessageController(repo repository.MessageRepository, webhook client.WebhookClient, cache cache.MessageCache, logger *log.Logger) *MessageController {
 	return &MessageController{
 		repo:    repo,
 		webhook: webhook,
+		cache:   cache,
 		stopCh:  make(chan struct{}),
+		logger:  logger,
 	}
 }
 
@@ -94,45 +101,54 @@ func (c *MessageController) Start() error {
 
 // processMessages handles the message processing logic
 func (c *MessageController) processMessages() {
-	msgs, err := c.repo.FindPendingBefore(time.Now())
+	// Get pending messages
+	msgs, err := c.repo.FindPendingBefore(time.Now(), batchSize)
 	if err != nil {
-		log.Printf("Error finding pending messages: %v", err)
+		c.logger.Printf("Failed to fetch pending messages: %v", err)
 		return
 	}
 
-	log.Printf("Found %d pending messages", len(msgs))
-
-	// Process only up to batchSize messages
-	if len(msgs) > batchSize {
-		msgs = msgs[:batchSize]
-	}
-
 	for _, msg := range msgs {
-		req := &model.WebhookRequest{
-			To:      msg.To,
-			Content: msg.Content,
+		if err := c.processMessage(msg); err != nil {
+			c.logger.Printf("Failed to process message %d: %v", msg.ID, err)
 		}
-
-		log.Printf("Sending message ID %d to webhook", msg.ID)
-		resp, err := c.webhook.SendMessage(req)
-		if err != nil {
-			log.Printf("Error sending message ID %d: %v", msg.ID, err)
-			_ = c.repo.UpdateStatus(msg.ID, "failed")
-			continue
-		}
-		log.Printf("Webhook response for message ID %d: %+v", msg.ID, resp)
-
-		now := time.Now()
-		msg.MessageID = resp.MessageID
-		msg.Status = "sent"
-		msg.SentAt = &now
-
-		if err := c.repo.UpdateStatus(msg.ID, msg.Status); err != nil {
-			log.Printf("Error updating message ID %d status: %v", msg.ID, err)
-			continue
-		}
-		log.Printf("Successfully processed message ID %d", msg.ID)
 	}
+}
+
+// processMessage handles the message processing logic for a single message
+func (c *MessageController) processMessage(msg model.Message) error {
+	// Prepare webhook request
+	req := &model.WebhookRequest{
+		To:      msg.To,
+		Content: msg.Content,
+	}
+
+	// Send message
+	resp, err := c.webhook.SendMessage(req)
+	if err != nil {
+		msg.Status = model.StatusFailed
+		_ = c.repo.UpdateStatus(msg.ID, msg.Status)
+		return fmt.Errorf("webhook send failed: %w", err)
+	}
+
+	// Update message status
+	now := time.Now()
+	msg.MessageID = resp.MessageID
+	msg.Status = model.StatusSent
+	msg.SentAt = &now
+
+	// Cache message ID (non-critical operation)
+	if err := c.cache.StoreMessageID(context.Background(), resp.MessageID, now); err != nil {
+		c.logger.Printf("Warning: Failed to cache message ID %s: %v", resp.MessageID, err)
+	}
+
+	// Update database
+	if err := c.repo.UpdateStatus(msg.ID, msg.Status); err != nil {
+		return fmt.Errorf("failed to update message status: %w", err)
+	}
+
+	c.logger.Printf("Successfully processed message ID %d", msg.ID)
+	return nil
 }
 
 // Stop halts message processing

@@ -11,7 +11,11 @@ import (
 func NewPostgresDB(host string, port int, user, password, dbname string) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
-	return gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize database, got error %v", err)
+	}
+	return db, nil
 }
 
 type Message struct {

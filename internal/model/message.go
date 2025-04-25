@@ -2,6 +2,12 @@ package model
 
 import "time"
 
+const (
+	StatusPending = "pending"
+	StatusSent    = "sent"
+	StatusFailed  = "failed"
+)
+
 type Message struct {
 	ID            uint       `json:"id" gorm:"primaryKey"`
 	Content       string     `json:"content" gorm:"size:500"`

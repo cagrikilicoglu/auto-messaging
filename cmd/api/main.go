@@ -7,29 +7,35 @@ import (
 	"auto-messaging/internal/handler"
 	"auto-messaging/internal/repository"
 	"auto-messaging/internal/router"
-	"auto-messaging/pkg/database"
+	"auto-messaging/pkg/cache"
 	"log"
+	"os"
 	"strconv"
 )
 
 func main() {
+	// Initialize logger
+	logger := log.New(os.Stdout, "AUTO-MSG: ", log.LstdFlags)
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		logger.Fatalf("Failed to load configuration: %v", err)
 	}
 
 	// Initialize database
-	db, err := database.NewPostgresDB(
-		cfg.DB.Host,
-		cfg.DB.Port,
-		cfg.DB.User,
-		cfg.DB.Password,
-		cfg.DB.DBName,
-	)
+	db, err := repository.InitDB(cfg.DB)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logger.Fatalf("Failed to connect to database: %v", err)
 	}
+
+	// Initialize Redis cache
+	redisCache := cache.NewRedisCache(
+		cfg.Redis.Host,
+		cfg.Redis.Port,
+		cfg.Redis.Password,
+		cfg.Redis.DB,
+	)
 
 	// Initialize repository
 	messageRepo := repository.NewMessageRepository(db)
@@ -37,8 +43,8 @@ func main() {
 	// Initialize webhook client
 	webhookClient := client.NewWebhookClient(cfg.Webhook.URL, cfg.Webhook.AuthKey)
 
-	// Initialize controller
-	messageController := controller.NewMessageController(messageRepo, webhookClient)
+	// Initialize controller with logger
+	messageController := controller.NewMessageController(messageRepo, webhookClient, redisCache, logger)
 
 	// Initialize handlers
 	messageHandler := handler.NewMessageHandler(messageController)
@@ -47,8 +53,8 @@ func main() {
 	r := router.SetupRouter(messageHandler)
 
 	// Start server
-	log.Printf("Server starting on port %d", cfg.Server.Port)
+	logger.Printf("Server starting on port %d", cfg.Server.Port)
 	if err := r.Run(":" + strconv.Itoa(cfg.Server.Port)); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		logger.Fatalf("Failed to start server: %v", err)
 	}
 }

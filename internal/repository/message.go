@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"auto-messaging/config"
+	"auto-messaging/pkg/database"
 	"time"
 
 	"auto-messaging/internal/model"
@@ -14,7 +16,7 @@ type MessageRepository interface {
 	FindAll() ([]model.Message, error)
 	FindByID(id uint) (*model.Message, error)
 	UpdateStatus(id uint, status string) error
-	FindPendingBefore(time time.Time) ([]model.Message, error)
+	FindPendingBefore(time time.Time, limit int) ([]model.Message, error)
 	FindByStatus(status string) ([]*model.Message, error)
 }
 
@@ -26,6 +28,11 @@ type messageRepository struct {
 // NewMessageRepository creates a new message repository
 func NewMessageRepository(db *gorm.DB) MessageRepository {
 	return &messageRepository{db: db}
+}
+
+// InitDB initializes the database connection
+func InitDB(cfg config.DBConfig) (*gorm.DB, error) {
+	return database.NewPostgresDB(cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName)
 }
 
 func (r *messageRepository) Create(message *model.Message) error {
@@ -52,9 +59,9 @@ func (r *messageRepository) UpdateStatus(id uint, status string) error {
 	return r.db.Model(&model.Message{}).Where("id = ?", id).Update("status", status).Error
 }
 
-func (r *messageRepository) FindPendingBefore(time time.Time) ([]model.Message, error) {
+func (r *messageRepository) FindPendingBefore(time time.Time, limit int) ([]model.Message, error) {
 	var messages []model.Message
-	if err := r.db.Where("status = ? AND scheduled_time <= ?", "pending", time).Order("scheduled_time asc").Find(&messages).Error; err != nil {
+	if err := r.db.Where("status = ? AND scheduled_time <= ?", "pending", time).Order("scheduled_time asc").Limit(limit).Find(&messages).Error; err != nil {
 		return nil, err
 	}
 	return messages, nil
