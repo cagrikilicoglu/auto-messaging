@@ -1,24 +1,68 @@
-# Binaries for programs and plugins
+# Configuration files
+config/config.yaml
+config/*.local.yaml
+docker-compose.yml
+docker-compose.*.yml
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# Build files
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+bin/
+dist/
 
 # Test binary, built with `go test -c`
 *.test
 
-# Output of the go coverage tool
+# Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+coverage.txt
+profile.out
 
 # Dependency directories
 vendor/
+node_modules/
 
-# IDE specific files
-.idea/
-.vscode/
-*.swp
-*.swo
+# Go workspace file
+go.work
 
-# Environment files
-.env 
+# Environment and configuration files
+.env
+.env.*
+*.env
+.env.local
+.env.development
+.env.production
+
+# Log files
+*.log
+logs/
+tmp/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Redis dump files
+dump.rdb 

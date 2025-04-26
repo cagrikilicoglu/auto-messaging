@@ -2,7 +2,8 @@ package database
 
 import (
 	"fmt"
-	"time"
+
+	"auto-messaging/internal/model"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -20,7 +21,7 @@ func NewPostgresDB(host string, port int, user, password, dbname string) (*gorm.
 	}
 
 	// Auto-migrate the Message model
-	if err := db.AutoMigrate(&Message{}); err != nil {
+	if err := db.AutoMigrate(&model.Message{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %v", err)
 	}
 
@@ -29,16 +30,4 @@ func NewPostgresDB(host string, port int, user, password, dbname string) (*gorm.
 
 func GetDB() *gorm.DB {
 	return db
-}
-
-type Message struct {
-	ID          uint   `gorm:"primaryKey"`
-	Content     string `gorm:"size:500"`
-	To          string
-	Status      string `gorm:"default:'pending'"`
-	MessageID   string
-	SentAt      *time.Time
-	ScheduledAt time.Time
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
 }

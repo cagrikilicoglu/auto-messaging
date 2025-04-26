@@ -51,23 +51,35 @@ func (c *webhookClient) SendMessage(req *model.WebhookRequest) (*model.WebhookRe
 	httpReq.Header.Set("Content-Type", contentType)
 	httpReq.Header.Set(authHeaderKey, c.authKey)
 
-	log.Printf("Sending webhook request to %s", c.url)
+	log.Printf("Sending webhook request to %s with body: %s", c.url, string(body))
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
+		log.Printf("Webhook request failed: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	log.Printf("Webhook response status: %d %s", resp.StatusCode, resp.Status)
 
-	if resp.StatusCode != http.StatusAccepted {
+	// Accept any 2xx status code
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, errors.New("unexpected response status: " + resp.Status)
+	}
+
+	// For 202 Accepted, we don't need to parse the response body
+	if resp.StatusCode == http.StatusAccepted {
+		return &model.WebhookResponse{
+			Message:   "Message accepted",
+			MessageID: "accepted",
+		}, nil
 	}
 
 	var response model.WebhookResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		log.Printf("Failed to decode webhook response: %v", err)
 		return nil, err
 	}
 
+	log.Printf("Webhook response: %+v", response)
 	return &response, nil
 }

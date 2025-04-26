@@ -10,6 +10,9 @@ import (
 func SetupRouter(messageHandler *handler.MessageHandler) *gin.Engine {
 	r := gin.Default()
 
+	// Only trust localhost proxy
+	r.SetTrustedProxies([]string{"127.0.0.1", "::1"})
+
 	// API routes
 	api := r.Group("/api/v1")
 	{

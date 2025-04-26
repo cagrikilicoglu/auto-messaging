@@ -30,6 +30,7 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -53,7 +54,7 @@ import (
 
 func main() {
 	// Initialize logger
-	logger := log.New(os.Stdout, "", log.LstdFlags)
+	logger := log.New(os.Stdout, "[AutoMessaging] ", log.LstdFlags)
 
 	// Load configuration
 	cfg, err := config.Load()
@@ -61,8 +62,14 @@ func main() {
 		logger.Fatalf("Failed to load config: %v", err)
 	}
 
+	// Debug log the loaded config
+	logger.Printf("Loaded config - DB Host: %s, Port: %d, User: %s, Name: %s",
+		cfg.DB.Host, cfg.DB.Port, cfg.DB.User, cfg.DB.Name)
+	logger.Printf("Webhook URL: %s", cfg.Webhook.URL)
+
 	// Initialize database
-	if _, err := repository.InitDB(cfg.Database); err != nil {
+	db, err := repository.InitDB(cfg.DB)
+	if err != nil {
 		logger.Fatalf("Failed to initialize database: %v", err)
 	}
 
@@ -78,33 +85,41 @@ func main() {
 	webhookClient := client.NewWebhookClient(cfg.Webhook.URL, cfg.Webhook.AuthKey)
 
 	// Initialize repository
-	messageRepo := repository.NewMessageRepository()
+	messageRepo := repository.NewMessageRepository(db)
 
 	// Initialize controller
 	messageController := controller.NewMessageController(messageRepo, webhookClient, messageCache, logger)
 
-	// Initialize handlers
-	messageHandler := handler.NewMessageHandler(messageController)
+	// Start message processing automatically
+	if err := messageController.Start(); err != nil {
+		logger.Fatalf("Failed to start message processing: %v", err)
+	}
 
-	// Setup router
+	// Initialize handlers and router
+	messageHandler := handler.NewMessageHandler(messageController)
 	r := router.SetupRouter(messageHandler)
 
 	// Add Swagger
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Start server
-	logger.Printf("Server starting on port %d", cfg.Server.Port)
-
 	// Start server in a goroutine
+	port := strconv.Itoa(cfg.Server.Port)
 	go func() {
-		if err := r.Run(":" + strconv.Itoa(cfg.Server.Port)); err != nil {
+		if err := r.Run(":" + port); err != nil {
 			logger.Fatalf("Failed to start server: %v", err)
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server
+	// Wait for interrupt signal to gracefully shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	logger.Println("Shutting down server...")
+
+	// Stop message processing
+	if err := messageController.Stop(); err != nil {
+		logger.Printf("Error stopping message processing: %v", err)
+	}
+
+	// Give some time for cleanup
+	time.Sleep(2 * time.Second)
 }

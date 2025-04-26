@@ -3,8 +3,10 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -37,6 +39,9 @@ type MessageController struct {
 
 // NewMessageController creates a new MessageController
 func NewMessageController(repo repository.MessageRepository, webhook client.WebhookClient, cache cache.MessageCache, logger *log.Logger) *MessageController {
+	if logger == nil {
+		logger = log.New(os.Stdout, "[MessageController] ", log.LstdFlags)
+	}
 	return &MessageController{
 		repo:    repo,
 		webhook: webhook,
@@ -231,9 +236,17 @@ func (c *MessageController) StopMessaging(ctx *gin.Context) {
 
 // Start begins processing scheduled messages
 func (c *MessageController) Start() error {
+	// Create a channel to track goroutine startup
+	started := make(chan struct{})
+
 	go func() {
+		// Signal that the goroutine has started
+		close(started)
+
 		// Process messages immediately when started
-		c.processMessages()
+		if err := c.processMessages(); err != nil {
+			c.logger.Printf("Error processing messages: %v", err)
+		}
 
 		ticker := time.NewTicker(processInterval)
 		defer ticker.Stop()
@@ -241,29 +254,34 @@ func (c *MessageController) Start() error {
 		for {
 			select {
 			case <-ticker.C:
-				c.processMessages()
+				if err := c.processMessages(); err != nil {
+					c.logger.Printf("Error processing messages: %v", err)
+				}
 			case <-c.stopCh:
 				return
 			}
 		}
 	}()
 
+	// Wait for goroutine to start
+	<-started
 	return nil
 }
 
 // processMessages handles the message processing logic
-func (c *MessageController) processMessages() {
+func (c *MessageController) processMessages() error {
 	messages, err := c.repo.FindPendingBefore(context.Background(), time.Now(), batchSize)
 	if err != nil {
-		c.logger.Printf("Error finding pending messages: %v", err)
-		return
+		return fmt.Errorf("error finding pending messages: %v", err)
 	}
 
 	for _, msg := range messages {
 		if err := c.processMessage(msg); err != nil {
 			c.logger.Printf("Failed to process message %d: %v", msg.ID, err)
+			continue
 		}
 	}
+	return nil
 }
 
 // processMessage handles the message processing logic for a single message
@@ -280,27 +298,23 @@ func (c *MessageController) processMessage(msg *model.Message) error {
 	}
 	resp, err := c.webhook.SendMessage(req)
 	if err != nil {
-		c.logger.Printf("Failed to send message %d: %v", msg.ID, err)
-		return err
+		return fmt.Errorf("failed to send message: %v", err)
 	}
 
 	// Update message ID
 	if err := c.repo.UpdateMessageID(context.Background(), msg.ID, resp.MessageID); err != nil {
-		c.logger.Printf("Failed to update message %d ID: %v", msg.ID, err)
-		return err
+		return fmt.Errorf("failed to update message ID: %v", err)
 	}
 
 	// Update message status
 	now := time.Now()
 	if err := c.repo.UpdateStatus(context.Background(), msg.ID, model.MessageStatusSent); err != nil {
-		c.logger.Printf("Failed to update message %d status: %v", msg.ID, err)
-		return err
+		return fmt.Errorf("failed to update message status: %v", err)
 	}
 
 	// Update sent time
 	if err := c.repo.UpdateSentAt(context.Background(), msg.ID, now); err != nil {
-		c.logger.Printf("Failed to update message %d sent time: %v", msg.ID, err)
-		return err
+		return fmt.Errorf("failed to update sent time: %v", err)
 	}
 
 	return nil

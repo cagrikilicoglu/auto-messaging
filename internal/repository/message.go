@@ -3,10 +3,12 @@ package repository
 import (
 	"auto-messaging/config"
 	"auto-messaging/internal/model"
-	"auto-messaging/pkg/database"
 	"context"
+	"fmt"
+	"log"
 	"time"
 
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -28,15 +30,30 @@ type MessageRepositoryImpl struct {
 }
 
 // NewMessageRepository creates a new message repository
-func NewMessageRepository() *MessageRepositoryImpl {
+func NewMessageRepository(db *gorm.DB) *MessageRepositoryImpl {
 	return &MessageRepositoryImpl{
-		db: database.GetDB(),
+		db: db,
 	}
 }
 
 // InitDB initializes the database connection
-func InitDB(cfg config.DBConfig) (*gorm.DB, error) {
-	return database.NewPostgresDB(cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName)
+func InitDB(cfg config.DB) (*gorm.DB, error) {
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.Name)
+
+	log.Printf("Connecting to database with DSN: %s", dsn)
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	// Auto-migrate the Message model
+	if err := db.AutoMigrate(&model.Message{}); err != nil {
+		return nil, fmt.Errorf("failed to migrate database: %w", err)
+	}
+
+	return db, nil
 }
 
 func (r *MessageRepositoryImpl) Create(ctx context.Context, message *model.Message) error {
@@ -71,6 +88,7 @@ func (r *MessageRepositoryImpl) FindPendingBefore(ctx context.Context, before ti
 	var messages []*model.Message
 	err := r.db.WithContext(ctx).
 		Where("status = ? AND scheduled_at <= ?", model.MessageStatusPending, before).
+		Order("scheduled_at ASC").
 		Limit(limit).
 		Find(&messages).Error
 	if err != nil {

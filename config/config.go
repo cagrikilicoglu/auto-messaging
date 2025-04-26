@@ -8,40 +8,40 @@ import (
 	"github.com/spf13/viper"
 )
 
-// DBConfig holds database connection settings
-type DBConfig struct {
+// DB holds database connection settings
+type DB struct {
 	Host     string
 	Port     int
 	User     string
 	Password string
-	DBName   string
+	Name     string
 }
 
-// RedisConfig holds Redis connection settings
-type RedisConfig struct {
+// Redis holds Redis connection settings
+type Redis struct {
 	Host     string
 	Port     int
 	Password string
 	DB       int
 }
 
-// ServerConfig holds server settings
-type ServerConfig struct {
+// Server holds server settings
+type Server struct {
 	Port int
 }
 
-// WebhookConfig holds webhook settings
-type WebhookConfig struct {
+// Webhook holds webhook settings
+type Webhook struct {
 	URL     string
 	AuthKey string
 }
 
 // Config holds all configuration settings
 type Config struct {
-	Database DBConfig
-	Redis    RedisConfig
-	Server   ServerConfig
-	Webhook  WebhookConfig
+	DB      DB
+	Server  Server
+	Webhook Webhook
+	Redis   Redis
 }
 
 func Load() (*Config, error) {
@@ -49,17 +49,18 @@ func Load() (*Config, error) {
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./config")
+	viper.AddConfigPath("$HOME/go/src/auto-messaging/config")
 
 	// Set environment variable prefix
 	viper.SetEnvPrefix("")
 	viper.AutomaticEnv()
 
 	// Bind environment variables with proper structure
-	viper.BindEnv("Database.Host", "DB_HOST")
-	viper.BindEnv("Database.Port", "DB_PORT")
-	viper.BindEnv("Database.User", "DB_USER")
-	viper.BindEnv("Database.Password", "DB_PASSWORD")
-	viper.BindEnv("Database.DBName", "DB_NAME")
+	viper.BindEnv("DB.Host", "DB_HOST")
+	viper.BindEnv("DB.Port", "DB_PORT")
+	viper.BindEnv("DB.User", "DB_USER")
+	viper.BindEnv("DB.Password", "DB_PASSWORD")
+	viper.BindEnv("DB.Name", "DB_NAME")
 
 	viper.BindEnv("Redis.Host", "REDIS_HOST")
 	viper.BindEnv("Redis.Port", "REDIS_PORT")
@@ -71,24 +72,33 @@ func Load() (*Config, error) {
 	viper.BindEnv("Webhook.AuthKey", "WEBHOOK_AUTH_KEY")
 
 	// Set defaults
-	viper.SetDefault("Database.Host", "postgres")
-	viper.SetDefault("Database.Port", 5432)
-	viper.SetDefault("Database.User", "postgres")
-	viper.SetDefault("Database.Password", "Gopher822")
-	viper.SetDefault("Database.DBName", "auto_messaging")
+	viper.SetDefault("DB.Host", "localhost")
+	viper.SetDefault("DB.Port", 5432)
+	viper.SetDefault("DB.User", "postgres")
+	viper.SetDefault("DB.Name", "auto_messaging")
 
-	viper.SetDefault("Redis.Host", "redis")
+	viper.SetDefault("Redis.Host", "localhost")
 	viper.SetDefault("Redis.Port", 6379)
 	viper.SetDefault("Redis.Password", "")
 	viper.SetDefault("Redis.DB", 0)
 
 	viper.SetDefault("Server.Port", 8080)
 
+	// Try to read config file
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("error reading config file: %w", err)
 		}
+		fmt.Printf("No config file found, using defaults and environment variables\n")
 	}
+
+	// Debug log the loaded values
+	fmt.Printf("Config values from file:\n")
+	fmt.Printf("DB Host: %s\n", viper.GetString("DB.Host"))
+	fmt.Printf("DB Port: %d\n", viper.GetInt("DB.Port"))
+	fmt.Printf("DB User: %s\n", viper.GetString("DB.User"))
+	fmt.Printf("DB Password: %s\n", viper.GetString("DB.Password"))
+	fmt.Printf("DB Name: %s\n", viper.GetString("DB.Name"))
 
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
